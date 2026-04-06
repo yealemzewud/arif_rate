@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
+import { motion } from 'framer-motion';
 import { Hero } from './components/Hero';
 import { SearchWidget } from './components/SearchWidget';
 import { RoomList } from './components/RoomList';
@@ -7,6 +8,12 @@ import { BookingForm as BookingFormView } from './components/BookingForm';
 import { AppStep, AdviceRequest, Booking } from './types';
 import { format, addDays } from 'date-fns';
 import toast, { Toaster } from 'react-hot-toast';
+import { About } from './pages/About';
+import { Help } from './pages/Help';
+import { Contact } from './pages/Contact';
+import { Privacy } from './pages/Privacy';
+
+type AppView = 'home' | 'about' | 'help' | 'contact' | 'privacy';
 
 const API_BASE = 'https://arifrate.onrender.com';
 
@@ -20,7 +27,8 @@ function App() {
     room_type: 'Deluxe Suite King',
     no_of_adults: 2,
     childrens: [],
-    currency: 'USD'
+    currency: 'USD',
+    use_live_feed: true
   });
 
   const [advice, setAdvice] = useState<any>(null);
@@ -32,7 +40,13 @@ function App() {
   });
   
   const [step, setStep] = useState<AppStep>('search');
+  const [view, setView] = useState<AppView>('home');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Scroll to top on view change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [view, step]);
 
   useEffect(() => {
     setBookingForm(prev => ({ ...prev, advice: searchForm }));
@@ -63,21 +77,6 @@ function App() {
       }
       const data = await response.json();
       
-      if (searchForm.use_live_feed !== false && data.live_feed_used === false) {
-        let liveError = data.warnings?.find((w: string) => w.toLowerCase().includes('live feed skipped')) || 'Live pricing feed unavailable for these options.';
-        
-        // Intercept un-deployed backend dictionary strings gracefully
-        if (liveError.includes('no_of_adults is invalid')) {
-           liveError = "The live market provider restricts searches extending beyond maximum adult capacity.";
-        } else if (liveError.includes('no_of_children') && liveError.includes('invalid')) {
-           liveError = "The live market provider restricts searches extending beyond maximum children capacity.";
-        } else if (liveError.includes("{") && liveError.includes("}")) {
-           liveError = "Live market feed skipped for these options.";
-        }
-
-        toast.error(liveError);
-        return;
-      }
 
       setAdvice(data);
       setStep('results');
@@ -117,88 +116,141 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-50 font-sans font-light selection:bg-amber-100 selection:text-amber-900">
       <Toaster position="top-right" />
-      <Navbar />
+      <Navbar onNavigate={(v: AppView) => { setView(v); setStep('search'); }} />
 
-      {/* Main Flow Controller */}
-      {step === 'search' && (
+      {/* View Controller */}
+      {view === 'home' && (
         <>
-          <Hero />
-          <SearchWidget 
-            searchForm={searchForm} 
-            setSearchForm={setSearchForm} 
-            onSearch={fetchAdvice} 
-            isLoading={isLoading} 
-          />
-          
-          {/* Below-the-fold content for landing page */}
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-            <div className="text-center mb-16">
-              <span className="text-amber-500 font-semibold tracking-widest text-sm uppercase">Smart Pricing</span>
-              <h2 className="text-4xl font-serif mt-2 mb-6">Why Book With ArifRate?</h2>
-              <p className="text-slate-500 max-w-2xl mx-auto">Our AI-driven dynamic pricing ensures you always get the best value based on real-time market demand.</p>
-            </div>
-            
-            <div className="grid md:grid-cols-3 gap-8 text-center">
-              <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-slate-100">
-                 <div className="w-16 h-16 mx-auto bg-amber-50 text-amber-500 rounded-full flex items-center justify-center text-2xl mb-6">📉</div>
-                 <h3 className="font-serif text-xl mb-3">Live Market Rates</h3>
-                 <p className="text-slate-500 text-sm">We aggregate data instantly to update our room costs.</p>
+          {/* Main Flow Controller */}
+          {step === 'search' && (
+            <>
+              <Hero onNavigate={(v: AppView) => setView(v)} />
+              <SearchWidget 
+                searchForm={searchForm} 
+                setSearchForm={setSearchForm} 
+                onSearch={fetchAdvice} 
+                isLoading={isLoading} 
+              />
+              
+              {/* Below-the-fold content for landing page */}
+              <div id="features-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32">
+                <div className="text-center mb-20">
+                  <motion.span 
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    viewport={{ once: true }}
+                    className="text-amber-500 font-black tracking-[0.3em] text-[10px] uppercase block mb-4"
+                  >
+                    The Intelligence Advantage
+                  </motion.span>
+                  <h2 className="text-5xl font-serif text-slate-900 mb-6">Why Book With ArifRate?</h2>
+                  <div className="w-24 h-1 bg-amber-500 mx-auto rounded-full mb-8" />
+                  <p className="text-slate-500 max-w-2xl mx-auto text-lg font-light leading-relaxed">
+                    Our ML Regression engine analyzes thousands of data points instantly to ensure your luxury stay is booked at the <span className="text-slate-900 font-medium italic">optimal market moment</span>.
+                  </p>
+                </div>
+                
+                <div className="grid md:grid-cols-3 gap-10">
+                  {[
+                    { 
+                      icon: '📉', 
+                      title: 'Live Market Fusion', 
+                      desc: 'We aggregate multi-source market anchors to update costs in real-time, protecting you from arbitrary spikes.',
+                      color: 'indigo'
+                    },
+                    { 
+                      icon: '💎', 
+                      title: 'Curated Excellence', 
+                      desc: 'Only the finest Habesha retreats. Every room-type prediction is tailored to the specific resort DNA.',
+                      color: 'amber',
+                      dark: true
+                    },
+                    { 
+                      icon: '⚡', 
+                      title: 'Instant Execution', 
+                      desc: 'One-click reservation path with guaranteed receipt and immediate synchronization with hotel inventory.',
+                      color: 'emerald'
+                    }
+                  ].map((feature, i) => (
+                    <motion.div 
+                      key={i}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: i * 0.1 }}
+                      whileHover={{ y: -10 }}
+                      className={`relative p-10 rounded-[2.5rem] border border-slate-100 transition-all duration-500 group ${
+                        feature.dark ? 'bg-slate-900 text-white shadow-2xl shadow-slate-900/20' : 'bg-white shadow-xl shadow-slate-200/40 hover:shadow-2xl'
+                      }`}
+                    >
+                      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-8 transition-transform group-hover:scale-110 duration-500 ${
+                        feature.dark ? 'bg-white/10 text-white shadow-inner' : 'bg-slate-50 text-slate-900 shadow-sm'
+                      }`}>
+                        {feature.icon}
+                      </div>
+                      <h3 className={`font-serif text-2xl mb-4 ${feature.dark ? 'text-white' : 'text-slate-900'}`}>{feature.title}</h3>
+                      <p className={`text-sm leading-relaxed font-light ${feature.dark ? 'text-slate-400' : 'text-slate-500'}`}>{feature.desc}</p>
+                      
+                      {!feature.dark && (
+                        <div className="mt-8 pt-8 border-t border-slate-50 opacity-0 group-hover:opacity-100 transition-opacity">
+                           <span className="text-amber-600 text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                              Learn More <div className="w-8 h-[1px] bg-amber-500" />
+                           </span>
+                        </div>
+                      )}
+                    </motion.div>
+                  ))}
+                </div>
               </div>
-              <div className="bg-slate-900 text-white p-8 rounded-2xl shadow-xl hover:-translate-y-2 transition-transform cursor-pointer">
-                 <div className="w-16 h-16 mx-auto bg-slate-800 text-white rounded-full flex items-center justify-center text-2xl mb-6">💎</div>
-                 <h3 className="font-serif text-xl mb-3">Premium Comfort</h3>
-                 <p className="text-slate-300 text-sm">Experience our top-tier suites with exclusive perks and world-class service.</p>
-              </div>
-              <div className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-slate-100">
-                 <div className="w-16 h-16 mx-auto bg-amber-50 text-amber-500 rounded-full flex items-center justify-center text-2xl mb-6">⚡</div>
-                 <h3 className="font-serif text-xl mb-3">Instant Confirmation</h3>
-                 <p className="text-slate-500 text-sm">No waiting. Your booking is 100% confirmed seamlessly with a single click.</p>
-              </div>
-            </div>
-          </div>
+            </>
+          )}
+
+          {step === 'results' && (
+            <RoomList 
+              advice={advice} 
+              searchForm={searchForm} 
+              onBook={() => setStep('booking')} 
+              onBack={() => setStep('search')} 
+            />
+          )}
+
+          {step === 'booking' && (
+            <BookingFormView 
+              bookingForm={bookingForm} 
+              setBookingForm={setBookingForm} 
+              onConfirm={handleBooking} 
+              onBack={() => setStep('results')} 
+            />
+          )}
         </>
       )}
 
-      {step === 'results' && (
-        <RoomList 
-          advice={advice} 
-          searchForm={searchForm} 
-          onBook={() => setStep('booking')} 
-          onBack={() => setStep('search')} 
-        />
-      )}
-
-      {step === 'booking' && (
-        <BookingFormView 
-          bookingForm={bookingForm} 
-          setBookingForm={setBookingForm} 
-          onConfirm={handleBooking} 
-          onBack={() => setStep('results')} 
-        />
-      )}
+      {/* Sub-Pages */}
+      {view === 'about' && <About />}
+      {view === 'help' && <Help />}
+      {view === 'contact' && <Contact />}
+      {view === 'privacy' && <Privacy />}
 
       {/* Shared Footer */}
       <footer className="bg-slate-900 text-white py-16 border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8 mb-12 border-b border-slate-800 pb-12">
             <div className="md:col-span-2">
-              <h2 className="text-2xl font-bold mb-4 tracking-tight">Arif<span className="text-amber-500 font-serif italic">Rate</span></h2>
+              <h2 className="text-2xl font-bold mb-4 tracking-tight cursor-pointer" onClick={() => setView('home')}>Arif<span className="text-amber-500 font-serif italic">Rate</span></h2>
               <p className="text-slate-400 text-sm max-w-sm">The smartest way to book luxury accommodations. Our dynamic pricing engine guarantees uncompromised value.</p>
             </div>
             <div>
               <h4 className="font-semibold mb-4 text-slate-300">Company</h4>
               <ul className="space-y-2 text-sm text-slate-500">
-                <li><a href="#" className="hover:text-amber-500 transition-colors">About Us</a></li>
-                <li><a href="#" className="hover:text-amber-500 transition-colors">Careers</a></li>
-                <li><a href="#" className="hover:text-amber-500 transition-colors">Press</a></li>
+                <li><button onClick={() => setView('about')} className="hover:text-amber-500 transition-colors">About Us</button></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold mb-4 text-slate-300">Support</h4>
               <ul className="space-y-2 text-sm text-slate-500">
-                <li><a href="#" className="hover:text-amber-500 transition-colors">Help Center</a></li>
-                <li><a href="#" className="hover:text-amber-500 transition-colors">Contact</a></li>
-                <li><a href="#" className="hover:text-amber-500 transition-colors">Privacy Policy</a></li>
+                <li><button onClick={() => setView('help')} className="hover:text-amber-500 transition-colors">Help Center</button></li>
+                <li><button onClick={() => setView('contact')} className="hover:text-amber-500 transition-colors">Contact</button></li>
+                <li><button onClick={() => setView('privacy')} className="hover:text-amber-500 transition-colors">Privacy Policy</button></li>
               </ul>
             </div>
           </div>
